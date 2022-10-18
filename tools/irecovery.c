@@ -389,6 +389,8 @@ void print_progress_bar(double progress) {
 static void print_usage(int argc, char **argv) {
 	char *name = NULL;
 	name = strrchr(argv[0], '/');
+	printf("Version: " VERSION_COMMIT_SHA "-" VERSION_COMMIT_COUNT "\n");
+
 	printf("Usage: %s [OPTIONS]\n", (name ? name + 1: argv[0]));
 	printf("\n");
 	printf("Interact with an iOS device in DFU or recovery mode.\n");
