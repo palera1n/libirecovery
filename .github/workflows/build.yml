@@ -18,13 +18,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install libusb-1.0-0-dev
-
+          
+      - name: Prepare environment
+        run: |
+          echo "target_triplet=`gcc -dumpmachine`" >> $GITHUB_ENV
+          
       - name: Fetch libplist
         uses: dawidd6/action-download-artifact@v2
         with:
           github_token: ${{secrets.GITHUB_TOKEN}}
           workflow: build.yml
-          name: libplist-latest_x86_64-linux-gnu
+          name: libplist-latest_${{env.target_triplet}}
           repo: libimobiledevice/libplist
 
       - name: Fetch libimobiledevice-glue
@@ -32,6 +36,7 @@ jobs:
         with:
           github_token: ${{secrets.GITHUB_TOKEN}}
           workflow: build.yml
+          name: libimobiledevice-glue-latest_${{env.target_triplet}}
           repo: libimobiledevice/libimobiledevice-glue
 
       - name: Install external dependencies
