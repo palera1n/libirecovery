@@ -53,7 +53,7 @@ jobs:
         run: ./autogen.sh PKG_CONFIG_PATH=/usr/local/lib/pkgconfig LDFLAGS="-Wl,-rpath=/usr/local/lib"
 
       - name: Run make
-        run: make
+        run: make -j$(nproc)
 
       - name: Run make install
         run: sudo make install
@@ -77,10 +77,10 @@ jobs:
       - name: Publish artifact
         uses: actions/upload-artifact@v2
         with:
-          name: libirecovery-latest_Linux
+          name: libirecovery_Linux
           path: libirecovery.tar
 
-  build-macOS:
+  build-macos:
     runs-on: macos-latest
     steps:
       - name: Checkout
@@ -134,7 +134,7 @@ jobs:
           ./autogen.sh PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
       - name: Run make
-        run: make
+        run: make -j$(nproc)
 
       - name: Run make install
         run: sudo make install
@@ -158,5 +158,157 @@ jobs:
       - name: Publish artifact
         uses: actions/upload-artifact@v2
         with:
-          name: libirecovery-latest_Darwin
+          name: libirecovery_Darwin
           path: libirecovery.tar
+
+  build-linux-static:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install libusb-1.0-0-dev
+          
+      - name: Prepare environment
+        run: |
+          echo "target_triplet=`gcc -dumpmachine`" >> $GITHUB_ENV
+          
+      - name: Fetch libplist
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          github_token: ${{secrets.GITHUB_TOKEN}}
+          workflow: build.yml
+          name: libplist-latest_${{env.target_triplet}}
+          repo: libimobiledevice/libplist
+
+      - name: Fetch libimobiledevice-glue
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          github_token: ${{secrets.GITHUB_TOKEN}}
+          workflow: build.yml
+          name: libimobiledevice-glue-latest_${{env.target_triplet}}
+          repo: libimobiledevice/libimobiledevice-glue
+
+      - name: Install external dependencies
+        run: |
+          mkdir extract
+          for I in *.tar; do
+              tar -C extract -xvf $I
+          done
+
+          sudo cp -r extract/* /
+          sudo ldconfig
+
+      - name: Run autogen
+        run: ./autogen.sh PKG_CONFIG_PATH=/usr/local/lib/pkgconfig LDFLAGS="-Wl,-rpath=/usr/local/lib" --disable-shared
+
+      - name: Run make
+        run: make -j$(nproc)
+
+      - name: Run make install
+        run: sudo make install
+
+      - name: Prepare artifact
+        run: |
+          mkdir -p dest
+          DESTDIR=`pwd`/dest make install
+          echo -n "$(git rev-parse HEAD | tr -d '\n')" > latest_build_sha.txt
+          echo -n "$(git rev-list --count HEAD | tr -d '\n')" > latest_build_num.txt
+
+      - name: Upload versioning
+        uses: actions/upload-artifact@v2
+        with:
+          name: Versioning
+          path: |
+            ${{ github.workspace }}/latest_build_sha.txt
+            ${{ github.workspace }}/latest_build_num.txt
+
+      - name: Publish artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: libirecovery-static_Linux
+          path: ${{ github.workspace }}/dest/irecovery
+
+  build-macos-static:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: |
+          if test -x "`which port`"; then
+              sudo port install libtool autoconf automake pkgconfig
+          else
+              brew install libtool autoconf automake pkgconfig
+          fi
+        shell: bash
+
+      - name: Fetch libplist
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          github_token: ${{secrets.GITHUB_TOKEN}}
+          workflow: build.yml
+          name: libplist-latest_macOS
+          repo: libimobiledevice/libplist
+
+      - name: Fetch libimobiledevice-glue
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          github_token: ${{secrets.GITHUB_TOKEN}}
+          workflow: build.yml
+          name: libimobiledevice-glue-latest_macOS
+          repo: libimobiledevice/libimobiledevice-glue
+
+      - name: Install external dependencies
+        run: |
+          mkdir extract
+          for I in *.tar; do
+              tar -C extract -xvf $I
+          done
+          sudo cp -r extract/* /
+
+      - name: Run autogen
+        run: |
+          SDKDIR=`xcrun --sdk macosx --show-sdk-path`
+          TESTARCHS="arm64 x86_64"
+          USEARCHS=
+          for ARCH in $TESTARCHS; do
+              if echo "int main(int argc, char **argv) { return 0; }" |clang -arch $ARCH -o /dev/null -isysroot $SDKDIR -x c - 2>/dev/null; then
+                  USEARCHS="$USEARCHS -arch $ARCH"
+              fi
+          done
+          export CFLAGS="$USEARCHS -isysroot $SDKDIR"
+          echo "Using CFLAGS: $CFLAGS"
+          ./autogen.sh PKG_CONFIG_PATH=/usr/local/lib/pkgconfig --disable-shared
+
+      - name: Run make
+        run: make -j$(nproc)
+
+      - name: Run make install
+        run: sudo make install 
+
+      - name: Prepare artifact
+        run: |
+          mkdir -p dest
+          DESTDIR=`pwd`/dest make install
+          echo -n "$(git rev-parse HEAD | tr -d '\n')" > latest_build_sha.txt
+          echo -n "$(git rev-list --count HEAD | tr -d '\n')" > latest_build_num.txt
+
+      - name: Upload versioning
+        uses: actions/upload-artifact@v2
+        with:
+          name: Versioning
+          path: |
+            ${{ github.workspace }}/latest_build_sha.txt
+            ${{ github.workspace }}/latest_build_num.txt
+
+      - name: Publish artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: libirecovery-static_Darwin
+          path: ${{ github.workspace }}/dest/irecovery
