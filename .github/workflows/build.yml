@@ -1,4 +1,4 @@
-name: build
+name: Build
 
 on:
   push:
@@ -24,7 +24,7 @@ jobs:
         with:
           github_token: ${{secrets.GITHUB_TOKEN}}
           workflow: build.yml
-          name: libplist-latest_${{env.target_triplet}}
+          name: libplist-latest_x86_64-linux-gnu
           repo: libimobiledevice/libplist
 
       - name: Fetch libimobiledevice-glue
@@ -32,7 +32,6 @@ jobs:
         with:
           github_token: ${{secrets.GITHUB_TOKEN}}
           workflow: build.yml
-          name: libimobiledevice-glue-latest_${{env.target_triplet}}
           repo: libimobiledevice/libimobiledevice-glue
 
       - name: Install external dependencies
