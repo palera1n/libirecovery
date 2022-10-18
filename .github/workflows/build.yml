@@ -19,10 +19,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install libusb-1.0-0-dev
 
-      - name: Prepare environment
-        run: |
-          echo "target_triplet=`gcc -dumpmachine`" >> $GITHUB_ENV
-
       - name: Fetch libplist
         uses: dawidd6/action-download-artifact@v2
         with:
@@ -77,7 +73,7 @@ jobs:
       - name: Publish artifact
         uses: actions/upload-artifact@v2
         with:
-          name: libirecovery-latest_${{env.target_triplet}}
+          name: libirecovery-latest_Linux
           path: libirecovery.tar
 
   build-macOS:
@@ -158,5 +154,5 @@ jobs:
       - name: Publish artifact
         uses: actions/upload-artifact@v2
         with:
-          name: libirecovery-latest_macOS
+          name: libirecovery-latest_Darwin
           path: libirecovery.tar
