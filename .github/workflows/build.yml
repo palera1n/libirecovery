@@ -214,8 +214,6 @@ jobs:
 
       - name: Prepare artifact
         run: |
-          mkdir -p dest
-          DESTDIR=`pwd`/dest make install
           echo -n "$(git rev-parse HEAD | tr -d '\n')" > latest_build_sha.txt
           echo -n "$(git rev-list --count HEAD | tr -d '\n')" > latest_build_num.txt
 
@@ -231,7 +229,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: libirecovery-static_Linux
-          path: ${{ github.workspace }}/dest/irecovery
+          path: /usr/local/bin/irecovery
 
   build-macos-static:
     runs-on: macos-latest
