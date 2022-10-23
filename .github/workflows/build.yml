@@ -291,7 +291,33 @@ jobs:
       - name: Install libplist
         run: |
           cd ${{ github.workspace }}/libplist
-          ./autogen.sh --disable-shared --without-cython
+
+          SDKDIR=`xcrun --sdk macosx --show-sdk-path`
+          TESTARCHS="arm64 x86_64"
+          USEARCHS=
+          for ARCH in $TESTARCHS; do
+            if echo "int main(int argc, char **argv) { return 0; }" |clang -arch $ARCH -o /dev/null -isysroot $SDKDIR -x c - 2>/dev/null; then
+              USEARCHS="$USEARCHS -arch $ARCH"
+            fi
+          done
+          export CFLAGS="$USEARCHS -isysroot $SDKDIR"
+          echo "Using CFLAGS: $CFLAGS"
+          PYTHON3_BIN=`xcrun -f python3`
+          if test -x $PYTHON3_BIN; then
+            export PYTHON=$PYTHON3_BIN
+            PYTHON_VER=`$PYTHON3_BIN -c "import distutils.sysconfig; print(distutils.sysconfig.get_config_var('VERSION'))"`
+            PYTHON_EXEC_PREFIX=`$PYTHON3_BIN -c "import distutils.sysconfig; print(distutils.sysconfig.get_config_var('exec_prefix'))"`
+            PYTHON_LIBS_PATH=$PYTHON_EXEC_PREFIX/lib
+            PYTHON_FRAMEWORK_PATH=$PYTHON_EXEC_PREFIX/Python3
+            export PYTHON_LIBS="-L$PYTHON_LIBS_PATH -lpython$PYTHON_VER"
+            export PYTHON_EXTRA_LDFLAGS="-Wl,-stack_size,1000000  -framework CoreFoundation $PYTHON_FRAMEWORK_PATH"
+          else
+            export PATH="$PATH:/Library/Frameworks/Python.framework/Versions/2.7/bin"
+            export LIBS="-L/Library/Frameworks/Python.framework/Versions/2.7/lib"
+            export PYTHON_EXTRA_LDFLAGS="-u _PyMac_Error /System/Library/Frameworks/Python.framework/Versions/2.7/Python"
+          fi
+          ./autogen.sh --disable-shared --without-cython --enable-debug
+
           make -j$(sysctl -n hw.ncpu)
           sudo make install
           cd -
@@ -313,7 +339,19 @@ jobs:
       - name: Install libimobiledevice-glue
         run: |
           cd ${{ github.workspace }}/libimobiledevice-glue
-          ./autogen.sh --disable-shared
+
+          SDKDIR=`xcrun --sdk macosx --show-sdk-path`
+          TESTARCHS="arm64 x86_64"
+          USEARCHS=
+          for ARCH in $TESTARCHS; do
+            if echo "int main(int argc, char **argv) { return 0; }" |clang -arch $ARCH -o /dev/null -isysroot $SDKDIR -x c - 2>/dev/null; then
+              USEARCHS="$USEARCHS -arch $ARCH"
+            fi
+          done
+          export CFLAGS="$USEARCHS -isysroot $SDKDIR"
+          echo "Using CFLAGS: $CFLAGS"
+          ./autogen.sh PKG_CONFIG_PATH=/usr/local/lib/pkgconfig --disable-shared
+
           make -j$(sysctl -n hw.ncpu)
           sudo make install
           cd -
