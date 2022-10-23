@@ -67,7 +67,7 @@ jobs:
           echo -n "$(git rev-list --count HEAD | tr -d '\n')" > latest_build_num.txt
 
       - name: Upload versioning
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: Versioning
           path: |
@@ -75,7 +75,7 @@ jobs:
             ${{ github.workspace }}/latest_build_num.txt
 
       - name: Publish artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: libirecovery_Linux
           path: libirecovery.tar
@@ -148,7 +148,7 @@ jobs:
           echo -n "$(git rev-list --count HEAD | tr -d '\n')" > latest_build_num.txt
 
       - name: Upload versioning
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: Versioning
           path: |
@@ -156,7 +156,7 @@ jobs:
             ${{ github.workspace }}/latest_build_num.txt
 
       - name: Publish artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: libirecovery_Darwin
           path: libirecovery.tar
@@ -177,31 +177,59 @@ jobs:
         run: |
           echo "target_triplet=`gcc -dumpmachine`" >> $GITHUB_ENV
           
-      - name: Fetch libplist
-        uses: dawidd6/action-download-artifact@v2
+      #- name: Fetch libplist
+      #  uses: dawidd6/action-download-artifact@v2
+      #  with:
+      #    github_token: ${{ secrets.GITHUB_TOKEN }}
+      #    workflow: build.yml
+      #    name: libplist-latest_${{env.target_triplet}}
+      #    repo: libimobiledevice/libplist
+      
+      - name: Checkout libplist
+        uses: actions/checkout@v3
         with:
-          github_token: ${{secrets.GITHUB_TOKEN}}
-          workflow: build.yml
-          name: libplist-latest_${{env.target_triplet}}
-          repo: libimobiledevice/libplist
-
-      - name: Fetch libimobiledevice-glue
-        uses: dawidd6/action-download-artifact@v2
-        with:
-          github_token: ${{secrets.GITHUB_TOKEN}}
-          workflow: build.yml
-          name: libimobiledevice-glue-latest_${{env.target_triplet}}
-          repo: libimobiledevice/libimobiledevice-glue
-
-      - name: Install external dependencies
+          repository: libimobiledevice/libplist
+          path: ${{ github.workspace }}/libplist
+      
+      - name: Install libplist
         run: |
-          mkdir extract
-          for I in *.tar; do
-              tar -C extract -xvf $I
-          done
+          cd ${{ github.workspace }}/libplist
+          ./autogen.sh --disable-shared --without-cython
+          make -j$(nproc)
+          sudo make install
+          cd -
 
-          sudo cp -r extract/* /
-          sudo ldconfig
+      #- name: Fetch libimobiledevice-glue
+      #  uses: dawidd6/action-download-artifact@v2
+      #  with:
+      #    github_token: ${{secrets.GITHUB_TOKEN}}
+      #    workflow: build.yml
+      #    name: libimobiledevice-glue-latest_${{env.target_triplet}}
+      #    repo: libimobiledevice/libimobiledevice-glue
+
+      - name: Checkout libimobiledevice-glue
+        uses: actions/checkout@v3
+        with:
+          repository: libimobiledevice/libimobiledevice-glue
+          path: ${{ github.workspace }}/libimobiledevice-glue
+      
+      - name: Install libimobiledevice-glue
+        run: |
+          cd ${{ github.workspace }}/libimobiledevice-glue
+          ./autogen.sh --disable-shared
+          make -j$(nproc)
+          sudo make install
+          cd -
+
+      #- name: Install external dependencies
+      #  run: |
+      #    mkdir extract
+      #    for I in *.tar; do
+      #        tar -C extract -xvf $I
+      #    done
+      #
+      #    sudo cp -r extract/* /
+      #    sudo ldconfig
 
       - name: Run autogen
         run: ./autogen.sh PKG_CONFIG_PATH=/usr/local/lib/pkgconfig LDFLAGS="-Wl,-rpath=/usr/local/lib" --disable-shared --enable-static
@@ -218,7 +246,7 @@ jobs:
           echo -n "$(git rev-list --count HEAD | tr -d '\n')" > latest_build_num.txt
 
       - name: Upload versioning
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: Versioning
           path: |
@@ -226,7 +254,7 @@ jobs:
             ${{ github.workspace }}/latest_build_num.txt
 
       - name: Publish artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: libirecovery-static_Linux
           path: /usr/local/bin/irecovery
@@ -246,29 +274,59 @@ jobs:
           fi
         shell: bash
 
-      - name: Fetch libplist
-        uses: dawidd6/action-download-artifact@v2
+      #- name: Fetch libplist
+      #  uses: dawidd6/action-download-artifact@v2
+      #  with:
+      #    github_token: ${{ secrets.GITHUB_TOKEN }}
+      #    workflow: build.yml
+      #    name: libplist-latest_${{env.target_triplet}}
+      #    repo: libimobiledevice/libplist
+      
+      - name: Checkout libplist
+        uses: actions/checkout@v3
         with:
-          github_token: ${{secrets.GITHUB_TOKEN}}
-          workflow: build.yml
-          name: libplist-latest_macOS
-          repo: libimobiledevice/libplist
-
-      - name: Fetch libimobiledevice-glue
-        uses: dawidd6/action-download-artifact@v2
-        with:
-          github_token: ${{secrets.GITHUB_TOKEN}}
-          workflow: build.yml
-          name: libimobiledevice-glue-latest_macOS
-          repo: libimobiledevice/libimobiledevice-glue
-
-      - name: Install external dependencies
+          repository: libimobiledevice/libplist
+          path: ${{ github.workspace }}/libplist
+      
+      - name: Install libplist
         run: |
-          mkdir extract
-          for I in *.tar; do
-              tar -C extract -xvf $I
-          done
-          sudo cp -r extract/* /
+          cd ${{ github.workspace }}/libplist
+          ./autogen.sh --disable-shared --without-cython
+          make -j$(sysctl -n hw.ncpu)
+          sudo make install
+          cd -
+
+      #- name: Fetch libimobiledevice-glue
+      #  uses: dawidd6/action-download-artifact@v2
+      #  with:
+      #    github_token: ${{secrets.GITHUB_TOKEN}}
+      #    workflow: build.yml
+      #    name: libimobiledevice-glue-latest_${{env.target_triplet}}
+      #    repo: libimobiledevice/libimobiledevice-glue
+
+      - name: Checkout libimobiledevice-glue
+        uses: actions/checkout@v3
+        with:
+          repository: libimobiledevice/libimobiledevice-glue
+          path: ${{ github.workspace }}/libimobiledevice-glue
+      
+      - name: Install libimobiledevice-glue
+        run: |
+          cd ${{ github.workspace }}/libimobiledevice-glue
+          ./autogen.sh --disable-shared
+          make -j$(sysctl -n hw.ncpu)
+          sudo make install
+          cd -
+
+      #- name: Install external dependencies
+      #  run: |
+      #    mkdir extract
+      #    for I in *.tar; do
+      #        tar -C extract -xvf $I
+      #    done
+      #
+      #    sudo cp -r extract/* /
+      #    sudo ldconfig
 
       - name: Run autogen
         run: |
@@ -296,7 +354,7 @@ jobs:
           echo -n "$(git rev-list --count HEAD | tr -d '\n')" > latest_build_num.txt
 
       - name: Upload versioning
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: Versioning
           path: |
@@ -304,7 +362,7 @@ jobs:
             ${{ github.workspace }}/latest_build_num.txt
 
       - name: Publish artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: libirecovery-static_Darwin
           path: /usr/local/bin/irecovery
